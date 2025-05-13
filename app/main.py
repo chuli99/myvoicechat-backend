@@ -1,5 +1,6 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import RedirectResponse
 
 from app.api.endpoints import users
 from app.core.config import settings
@@ -29,6 +30,15 @@ app.add_middleware(
 
 # Include routers
 app.include_router(users.router, prefix=f"{settings.API_V1_STR}/users", tags=["users"])
+
+
+# Redirección para la ruta /api/v1/login
+@app.post("/api/v1/login", tags=["authentication"], include_in_schema=False)
+async def login_redirect(request: Request):
+    """
+    Redirección al endpoint de login principal para mantener compatibilidad.
+    """
+    return RedirectResponse(url=f"{settings.API_V1_STR}/users/login", status_code=307)
 
 
 @app.get("/")

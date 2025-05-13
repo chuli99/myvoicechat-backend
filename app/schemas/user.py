@@ -3,6 +3,11 @@ from typing import Optional
 from datetime import datetime
 
 
+class LoginRequest(BaseModel):
+    username: str
+    password: str
+
+
 class UserBase(BaseModel):
     username: str
     email: EmailStr

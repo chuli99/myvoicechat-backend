@@ -1,7 +1,7 @@
 from typing import Generator, Optional
 
 from fastapi import Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordBearer
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from jose import jwt, JWTError
 from pydantic import ValidationError
 from sqlalchemy.orm import Session
@@ -14,15 +14,14 @@ from app.schemas.user import UserInDB
 from app.crud.user import get_user_by_username
 
 
-oauth2_scheme = OAuth2PasswordBearer(
-    tokenUrl=f"{settings.API_V1_STR}/login/access-token"
-)
+security = HTTPBearer()
 
 
 def get_current_user(
-    db: Session = Depends(get_db), token: str = Depends(oauth2_scheme)
+    db: Session = Depends(get_db), credentials: HTTPAuthorizationCredentials = Depends(security)
 ) -> User:
     try:
+        token = credentials.credentials
         payload = jwt.decode(
             token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
         )

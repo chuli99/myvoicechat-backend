@@ -1,17 +1,16 @@
 from typing import Any, List
 
 from fastapi import APIRouter, Body, Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from datetime import timedelta
 
-from app.api.dependencies import authenticate_user, get_current_user
+from app.api.dependencies import get_current_user, authenticate_user
 from app.core.config import settings
 from app.core.security import create_access_token
 from app.crud import user as user_crud
 from app.db.database import get_db
 from app.models.user import User
-from app.schemas.user import User as UserSchema, UserCreate, UserUpdate
+from app.schemas.user import User as UserSchema, UserCreate, UserUpdate, LoginRequest
 
 
 router = APIRouter()
@@ -44,19 +43,21 @@ def create_user(
     return user
 
 
-@router.post("/login/access-token")
-def login_access_token(
-    db: Session = Depends(get_db), form_data: OAuth2PasswordRequestForm = Depends()
+@router.post("/login", response_model=dict, name="login_with_credentials")
+def login_with_credentials(
+    *,
+    db: Session = Depends(get_db),
+    login_data: LoginRequest,
 ) -> dict:
     """
-    OAuth2 compatible token login, get an access token for future requests.
+    Login with username and password credentials directly via POST request.
+    Endpoint: POST /api/v1/users/login
     """
-    user = authenticate_user(db, form_data.username, form_data.password)
+    user = authenticate_user(db, login_data.username, login_data.password)
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect username or password",
-            headers={"WWW-Authenticate": "Bearer"},
         )
     
     access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
@@ -65,6 +66,8 @@ def login_access_token(
             user.username, expires_delta=access_token_expires
         ),
         "token_type": "bearer",
+        "user_id": user.id,
+        "username": user.username,
     }
 
 
