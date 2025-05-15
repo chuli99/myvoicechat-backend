@@ -18,6 +18,10 @@ if config.config_file_name is not None:
 # for 'autogenerate' support
 from app.db.database import Base
 from app.models.user import User
+from app.models.conversation import Conversation
+from app.models.participant import Participant
+from app.models.message import Message
+
 target_metadata = Base.metadata
 
 # other values from the config, defined by the needs of env.py,
@@ -25,8 +29,9 @@ target_metadata = Base.metadata
 # my_important_option = config.get_main_option("my_important_option")
 # ... etc.
 
-from app.core.config import settings
-config.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
+# Direct database URL assignment
+DATABASE_URL = "postgresql://postgres:plafax330i@localhost:5432/myvoicedb"
+config.set_main_option("sqlalchemy.url", DATABASE_URL)
 
 
 def run_migrations_offline() -> None:

@@ -1,8 +1,9 @@
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse
+from fastapi.staticfiles import StaticFiles
 
-from app.api.endpoints import users
+from app.api.endpoints import api_router
 from app.core.config import settings
 from app.db.database import create_tables
 
@@ -29,7 +30,10 @@ app.add_middleware(
 )
 
 # Include routers
-app.include_router(users.router, prefix=f"{settings.API_V1_STR}/users", tags=["users"])
+app.include_router(api_router, prefix=settings.API_V1_STR)
+
+# Mount static files
+app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 
 
 # Redirección para la ruta /api/v1/login
