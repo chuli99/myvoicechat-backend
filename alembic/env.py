@@ -21,6 +21,9 @@ from app.models.user import User
 from app.models.conversation import Conversation
 from app.models.participant import Participant
 from app.models.message import Message
+from app.core.config import settings
+from dotenv import load_dotenv
+
 
 target_metadata = Base.metadata
 
@@ -30,7 +33,7 @@ target_metadata = Base.metadata
 # ... etc.
 
 # Direct database URL assignment
-DATABASE_URL = "postgresql://postgres:plafax330i@localhost:5432/myvoicedb"
+DATABASE_URL = settings.SQLALCHEMY_DATABASE_URL
 config.set_main_option("sqlalchemy.url", DATABASE_URL)
 
 
