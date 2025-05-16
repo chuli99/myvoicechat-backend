@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Conversación</title>
+    <link rel="stylesheet" href="/static/login.css">
+    <style>
+        body {
+            background: linear-gradient(120deg, #89f7fe 0%, #66a6ff 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .container {
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+            backdrop-filter: blur(6px);
+            border-radius: 16px;
+            border: 1px solid rgba(255,255,255,0.18);
+            background: rgba(255,255,255,0.95);
+            padding: 2rem 1.2rem 1.2rem 1.2rem;
+            max-width: 430px;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            min-height: 600px;
+        }
+        .participants {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-bottom: 1.2rem;
+            justify-content: center;
+        }
+        .participant {
+            background: #dff9fb;
+            color: #273c75;
+            border-radius: 12px;
+            padding: 0.3rem 0.9rem;
+            font-size: 0.98rem;
+            font-weight: 500;
+            margin-bottom: 0.2rem;
+        }
+        .messages {
+            flex: 1;
+            overflow-y: auto;
+            margin-bottom: 1.2rem;
+            background: #f1f2f6;
+            border-radius: 10px;
+            padding: 1rem 0.7rem;
+            box-shadow: 0 2px 8px rgba(39,60,117,0.07);
+        }
+        .message {
+            margin-bottom: 0.8rem;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+        }
+        .message.me {
+            align-items: flex-end;
+        }
+        .message-user {
+            font-size: 0.93rem;
+            color: #718093;
+            margin-bottom: 0.1rem;
+        }
+        .message-content {
+            background: #66a6ff;
+            color: #fff;
+            border-radius: 8px;
+            padding: 0.5rem 1rem;
+            font-size: 1.05rem;
+            max-width: 80%;
+            word-break: break-word;
+        }
+        .message.me .message-content {
+            background: #273c75;
+        }
+        .message-time {
+            font-size: 0.8rem;
+            color: #aaa;
+            margin-top: 0.1rem;
+        }
+        .send-form {
+            display: flex;
+            gap: 0.3rem;
+            margin-top: 0.5rem;
+        }
+        .send-input {
+            flex: 1 1 0%;
+            padding: 0.6rem 1rem;
+            border-radius: 5px;
+            border: 1px solid #dcdde1;
+            font-size: 1.08rem;
+            background: #f1f2f6;
+            min-width: 0;
+        }
+        .send-btn {
+            background: #273c75;
+            color: #fff;
+            border: none;
+            border-radius: 50%;
+            padding: 0.38rem 0.48rem;
+            font-size: 1.35rem;
+            width: 2.3rem;
+            height: 2.3rem;
+            min-width: 2.3rem;
+            min-height: 2.3rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .send-btn:hover {
+            background: #40739e;
+        }
+        .back-btn {
+            background: #b2bec3;
+            color: #273c75;
+            border: none;
+            border-radius: 5px;
+            padding: 0.3rem 0.8rem;
+            font-size: 0.92rem;
+            cursor: pointer;
+            margin-bottom: 1rem;
+        }
+        .error {
+            color: #e84118;
+            margin-bottom: 0.7rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <button class="back-btn" onclick="goBack()">&larr; Volver</button>
+        <div class="participants" id="participants"></div>
+        <div class="messages" id="messages"></div>
+        <div id="errorMsg" class="error"></div>
+        <form class="send-form" id="sendForm">
+            <input type="text" id="messageInput" class="send-input" placeholder="Escribe un mensaje..." required autocomplete="off">
+            <button type="submit" class="send-btn" title="Enviar mensaje">💬</button>
+        </form>
+    </div>
+    <script>
+    const urlParams = new URLSearchParams(window.location.search);
+    const conversationId = urlParams.get('id');
+    const token = localStorage.getItem('access_token');
+    let currentUserId = null;
+    let participantsMap = {};
+
+    function goBack() {
+        window.location.href = '/static/home.html';
+    }
+
+    async function fetchParticipants() {
+        try {
+            const res = await fetch(`http://localhost:8080/api/v1/participants/conversation/${conversationId}`, {
+                headers: { 'Authorization': 'Bearer ' + token }
+            });
+            if (!res.ok) {
+                if (res.status === 401) goBack();
+                return;
+            }
+            const participants = await res.json();
+            const container = document.getElementById('participants');
+            container.innerHTML = '';
+            participantsMap = {};
+            participants.forEach(p => {
+                const span = document.createElement('span');
+                span.className = 'participant';
+                span.textContent = p.user.username;
+                container.appendChild(span);
+                participantsMap[p.user.id] = p.user.username;
+                if (p.user_id && token) {
+                    // Detectar el usuario actual por el JWT (opcional, si backend lo expone)
+                    // Aquí podrías guardar el id del usuario actual si lo tienes
+                }
+            });
+        } catch (e) {}
+    }
+
+    async function fetchMessages() {
+        try {
+            const res = await fetch(`http://localhost:8080/api/v1/messages/conversation/${conversationId}`, {
+                headers: { 'Authorization': 'Bearer ' + token }
+            });
+            if (!res.ok) {
+                if (res.status === 401) goBack();
+                return;
+            }
+            const messages = await res.json();
+            renderMessages(messages);
+        } catch (e) {}
+    }
+
+    function renderMessages(messages) {
+        const container = document.getElementById('messages');
+        container.innerHTML = '';
+        if (!messages.length) {
+            container.innerHTML = '<div style="color:#888;text-align:center;">No hay mensajes aún.</div>';
+            return;
+        }
+        messages.forEach(msg => {
+            const div = document.createElement('div');
+            div.className = 'message';
+            if (msg.sender_id && currentUserId && msg.sender_id === currentUserId) {
+                div.classList.add('me');
+            }
+            const user = participantsMap[msg.sender_id] || 'Usuario';
+            div.innerHTML = `
+                <span class="message-user">${user}</span>
+                <span class="message-content">${msg.content || '[Sin texto]'}</span>
+                <span class="message-time">${msg.created_at ? new Date(msg.created_at).toLocaleString() : ''}</span>
+            `;
+            container.appendChild(div);
+        });
+        container.scrollTop = container.scrollHeight;
+    }
+
+    async function getCurrentUserId() {
+        // Decodifica el JWT para obtener el user_id
+        if (!token) return null;
+        try {
+            const payload = JSON.parse(atob(token.split('.')[1]));
+            return payload.user_id || payload.id || null;
+        } catch (e) { return null; }
+    }
+
+    document.getElementById('sendForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        const input = document.getElementById('messageInput');
+        const content = input.value.trim();
+        if (!content) return;
+        try {
+            const res = await fetch('http://localhost:8080/api/v1/messages/text', {
+                method: 'POST',
+                headers: {
+                    'Authorization': 'Bearer ' + token,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    conversation_id: Number(conversationId),
+                    content_type: 'text',
+                    content: content
+                })
+            });
+            if (res.ok) {
+                input.value = '';
+                fetchMessages();
+            } else if (res.status === 401) {
+                goBack();
+            } else {
+                const err = await res.json();
+                document.getElementById('errorMsg').textContent = err.detail || 'No se pudo enviar el mensaje';
+            }
+        } catch (e) {
+            document.getElementById('errorMsg').textContent = 'No se pudo conectar al servidor.';
+        }
+    });
+
+    // Inicialización
+    (async function() {
+        if (!token) goBack();
+        currentUserId = await getCurrentUserId();
+        await fetchParticipants();
+        await fetchMessages();
+        // Refrescar mensajes cada 5 segundos
+        setInterval(fetchMessages, 5000);
+    })();
+    </script>
+</body>
+</html>

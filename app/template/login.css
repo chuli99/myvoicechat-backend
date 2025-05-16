@@ -30,20 +30,32 @@ input[type="text"], input[type="password"], input[type="email"] {
     font-size: 1rem;
     background: #f1f2f6;
 }
+button, .enter-btn, .logout-btn {
+    font-size: 0.95rem;
+    padding: 0.4rem 0.7rem;
+    border-radius: 4px;
+}
 button {
     width: 100%;
-    padding: 0.7rem;
+    margin-top: 0.5rem;
     background: #273c75;
     color: #fff;
     border: none;
-    border-radius: 5px;
     font-size: 1.1rem;
     cursor: pointer;
-    margin-top: 0.5rem;
     transition: background 0.2s;
 }
 button:hover {
     background: #40739e;
+}
+.enter-btn {
+    width: auto;
+    padding: 0.4rem 0.9rem;
+    font-size: 0.95rem;
+}
+.logout-btn {
+    padding: 0.3rem 0.8rem;
+    font-size: 0.92rem;
 }
 .error {
     color: #e84118;

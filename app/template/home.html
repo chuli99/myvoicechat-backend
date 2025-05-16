@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mis Conversaciones</title>
+    <link rel="stylesheet" href="/static/login.css">
+    <style>
+        body {
+            background: linear-gradient(120deg, #89f7fe 0%, #66a6ff 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .container {
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+            backdrop-filter: blur(6px);
+            border-radius: 16px;
+            border: 1px solid rgba(255,255,255,0.18);
+            background: rgba(255,255,255,0.90);
+            padding: 2.5rem 2.5rem 2rem 2.5rem;
+            max-width: 420px;
+            width: 100%;
+            text-align: center;
+        }
+        h2 {
+            color: #273c75;
+            margin-bottom: 1.5rem;
+            font-weight: 700;
+            letter-spacing: 1px;
+        }
+        .conversations-list {
+            list-style: none;
+            padding: 0;
+            margin: 0 0 1.5rem 0;
+        }
+        .conversation-item {
+            background: #f1f2f6;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            padding: 1rem 1.2rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: 0 2px 8px rgba(39,60,117,0.07);
+        }
+        .conversation-title {
+            color: #273c75;
+            font-weight: 600;
+            font-size: 1.08rem;
+            text-align: left;
+        }
+        .enter-btn {
+            background: #273c75;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            padding: 0.5rem 1.1rem;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .enter-btn:hover {
+            background: #40739e;
+        }
+        .logout-btn {
+            background: #e84118;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            padding: 0.4rem 1rem;
+            font-size: 0.95rem;
+            cursor: pointer;
+            margin-bottom: 1.2rem;
+            float: right;
+        }
+        .error {
+            color: #e84118;
+            margin-bottom: 1rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <button class="logout-btn" onclick="logout()">Cerrar sesión</button>
+        <h2>Mis Conversaciones</h2>
+        <div id="errorMsg" class="error"></div>
+        <ul id="conversations" class="conversations-list"></ul>
+    </div>
+    <script>
+    function logout() {
+        localStorage.removeItem('access_token');
+        window.location.href = '/static/login.html';
+    }
+
+    async function fetchConversations() {
+        const token = localStorage.getItem('access_token');
+        if (!token) {
+            window.location.href = '/static/login.html';
+            return;
+        }
+        try {
+            const res = await fetch('http://localhost:8080/api/v1/conversations', {
+                method: 'GET',
+                headers: { 'Authorization': 'Bearer ' + token }
+            });
+            if (!res.ok) {
+                if (res.status === 401) {
+                    logout();
+                } else {
+                    const err = await res.json();
+                    document.getElementById('errorMsg').textContent = err.detail || 'Error al cargar conversaciones';
+                }
+                return;
+            }
+            const conversations = await res.json();
+            renderConversations(conversations);
+        } catch (e) {
+            document.getElementById('errorMsg').textContent = 'No se pudo conectar al servidor.';
+        }
+    }
+
+    function renderConversations(conversations) {
+        const list = document.getElementById('conversations');
+        list.innerHTML = '';
+        if (!conversations.length) {
+            list.innerHTML = '<li>No tienes conversaciones aún.</li>';
+            return;
+        }
+        conversations.forEach(conv => {
+            const li = document.createElement('li');
+            li.className = 'conversation-item';
+            li.innerHTML = `
+                <span class="conversation-title">Conversación #${conv.id}</span>
+                <button class="enter-btn" onclick="enterConversation(${conv.id})">Entrar</button>
+            `;
+            list.appendChild(li);
+        });
+    }
+
+    function enterConversation(id) {
+        // Aquí puedes redirigir a la vista de la conversación (por ejemplo, conversation.html?id=ID)
+        window.location.href = `/static/conversation.html?id=${id}`;
+    }
+
+    fetchConversations();
+    </script>
+</body>
+</html>
