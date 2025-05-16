@@ -11,6 +11,7 @@ from app.crud import user as user_crud
 from app.db.database import get_db
 from app.models.user import User
 from app.schemas.user import User as UserSchema, UserCreate, UserUpdate, LoginRequest
+from app.services.user_service import UserService
 
 
 router = APIRouter()
@@ -25,21 +26,7 @@ def create_user(
     """
     Create new user.
     """
-    user = user_crud.get_user_by_email(db, email=user_in.email)
-    if user:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="The user with this email already exists in the system",
-        )
-    
-    user = user_crud.get_user_by_username(db, username=user_in.username)
-    if user:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="The user with this username already exists in the system",
-        )
-    
-    user = user_crud.create_user(db, user=user_in)
+    user = UserService.register_user(db, user_in)
     return user
 
 
@@ -53,13 +40,12 @@ def login_with_credentials(
     Login with username and password credentials directly via POST request.
     Endpoint: POST /api/v1/users/login
     """
-    user = authenticate_user(db, login_data.username, login_data.password)
+    user = UserService.authenticate(db, login_data.username, login_data.password)
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect username or password",
         )
-    
     access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     return {
         "access_token": create_access_token(
@@ -130,14 +116,12 @@ def update_user(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="The user with this id does not exist in the system",
         )
-    
     if user.id != current_user.id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="You don't have permission to update this user",
         )
-    
-    user = user_crud.update_user(db, db_user=user, user_in=user_in)
+    user = UserService.update_user_profile(db, user_id, user_in)
     return user
 
 
@@ -157,12 +141,10 @@ def delete_user(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="The user with this id does not exist in the system",
         )
-    
     if user.id != current_user.id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="You don't have permission to delete this user",
         )
-    
     user = user_crud.delete_user(db, user_id=user_id)
     return user

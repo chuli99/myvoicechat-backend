@@ -35,16 +35,6 @@ app.include_router(api_router, prefix=settings.API_V1_STR)
 # Mount static files
 app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 
-
-# Redirección para la ruta /api/v1/login
-@app.post("/api/v1/login", tags=["authentication"], include_in_schema=False)
-async def login_redirect(request: Request):
-    """
-    Redirección al endpoint de login principal para mantener compatibilidad.
-    """
-    return RedirectResponse(url=f"{settings.API_V1_STR}/users/login", status_code=307)
-
-
 @app.get("/")
 def root():
     return {"message": "Welcome to MyVoiceChat API"}
