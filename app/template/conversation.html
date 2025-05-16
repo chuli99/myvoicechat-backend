@@ -233,18 +233,18 @@
         const input = document.getElementById('messageInput');
         const content = input.value.trim();
         if (!content) return;
+        const formData = new FormData();
+        formData.append('conversation_id', conversationId);
+        formData.append('content_type', 'text');
+        formData.append('content', content);
         try {
-            const res = await fetch('http://localhost:8080/api/v1/messages/text', {
+            const res = await fetch('http://localhost:8080/api/v1/messages/', {
                 method: 'POST',
                 headers: {
-                    'Authorization': 'Bearer ' + token,
-                    'Content-Type': 'application/json'
+                    'Authorization': 'Bearer ' + token
+                    // No pongas Content-Type, fetch lo maneja con FormData
                 },
-                body: JSON.stringify({
-                    conversation_id: Number(conversationId),
-                    content_type: 'text',
-                    content: content
-                })
+                body: formData
             });
             if (res.ok) {
                 input.value = '';

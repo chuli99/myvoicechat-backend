@@ -9,7 +9,7 @@ from app.schemas import (
     Message, MessageWithSender
 )
 from app.services.messages_service import MessagesService
-
+from fastapi import Form
 router = APIRouter()
 
 # Create directory for audio uploads if it doesn't exist
@@ -19,8 +19,8 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 @router.post("/", response_model=Message)
 async def create_new_message(
-    conversation_id: int,
-    content_type: ContentType,
+    conversation_id: int = Form(...),
+    content_type: ContentType = Form(...),
     content: Optional[str] = Form(None),
     audio_file: Optional[UploadFile] = File(None),
     db: Session = Depends(get_db),
