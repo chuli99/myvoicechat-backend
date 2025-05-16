@@ -1,0 +1,59 @@
+body {
+    background: #f5f6fa;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+.container {
+    max-width: 350px;
+    margin: 60px auto;
+    background: #fff;
+    padding: 2rem 2.5rem 2rem 2.5rem;
+    border-radius: 10px;
+    box-shadow: 0 2px 16px rgba(0,0,0,0.08);
+    text-align: center;
+}
+h2 {
+    margin-bottom: 1.5rem;
+    color: #273c75;
+}
+label {
+    display: block;
+    margin: 1rem 0 0.3rem 0;
+    color: #353b48;
+    text-align: left;
+}
+input[type="text"], input[type="password"], input[type="email"] {
+    width: 100%;
+    padding: 0.6rem;
+    margin-bottom: 0.7rem;
+    border: 1px solid #dcdde1;
+    border-radius: 5px;
+    font-size: 1rem;
+    background: #f1f2f6;
+}
+button {
+    width: 100%;
+    padding: 0.7rem;
+    background: #273c75;
+    color: #fff;
+    border: none;
+    border-radius: 5px;
+    font-size: 1.1rem;
+    cursor: pointer;
+    margin-top: 0.5rem;
+    transition: background 0.2s;
+}
+button:hover {
+    background: #40739e;
+}
+.error {
+    color: #e84118;
+    margin-top: 0.5rem;
+    min-height: 1.2em;
+}
+a {
+    color: #0097e6;
+    text-decoration: none;
+}
+a:hover {
+    text-decoration: underline;
+}

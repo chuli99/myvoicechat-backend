@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register</title>
+    <link rel="stylesheet" href="/static/login.css">
+    <style>
+        body {
+            background: linear-gradient(120deg, #89f7fe 0%, #66a6ff 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .container {
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+            backdrop-filter: blur(6px);
+            border-radius: 16px;
+            border: 1px solid rgba(255,255,255,0.18);
+            background: rgba(255,255,255,0.85);
+            padding: 2.5rem 2.5rem 2rem 2.5rem;
+            max-width: 350px;
+            width: 100%;
+            text-align: center;
+        }
+        h2 {
+            color: #273c75;
+            margin-bottom: 1.5rem;
+            font-weight: 700;
+            letter-spacing: 1px;
+        }
+        .logo {
+            width: 60px;
+            margin-bottom: 1rem;
+        }
+        .error {
+            color: #e84118;
+            margin-top: 0.5rem;
+            min-height: 1.2em;
+        }
+        .success {
+            color: #44bd32;
+            margin-top: 0.5rem;
+        }
+        .footer {
+            margin-top: 1.5rem;
+            font-size: 0.95em;
+            color: #636e72;
+        }
+        @media (max-width: 400px) {
+            .container { padding: 1.2rem; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <img src="https://cdn-icons-png.flaticon.com/512/295/295128.png" alt="Logo" class="logo">
+        <h2>Registro</h2>
+        <form id="registerForm">
+            <label for="username">Usuario</label>
+            <input type="text" id="username" name="username" required>
+            <label for="email">Email</label>
+            <input type="email" id="email" name="email" required>
+            <label for="password">Contraseña</label>
+            <input type="password" id="password" name="password" required>
+            <label for="primary_language">Idioma principal</label>
+            <input type="text" id="primary_language" name="primary_language" required>
+            <button type="submit">Registrarse</button>
+        </form>
+        <div id="registerError" class="error"></div>
+        <p class="footer">¿Ya tienes cuenta? <a href="/static/login.html">Inicia sesión</a></p>
+    </div>
+    <script>
+    document.getElementById('registerForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        const username = document.getElementById('username').value;
+        const email = document.getElementById('email').value;
+        const password = document.getElementById('password').value;
+        const primary_language = document.getElementById('primary_language').value;
+        const res = await fetch('http://127.0.0.1:8080/api/v1/users/register', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username, email, password, primary_language })
+        });
+        if (res.ok) {
+            window.location.href = '/static/login.html';
+        } else {
+            const err = await res.json();
+            document.getElementById('registerError').textContent = err.detail || 'Registro fallido';
+        }
+    });
+    </script>
+</body>
+</html>

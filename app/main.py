@@ -1,7 +1,8 @@
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import RedirectResponse
+from fastapi.responses import RedirectResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
+import os
 
 from app.api.endpoints import api_router
 from app.core.config import settings
@@ -35,6 +36,12 @@ app.include_router(api_router, prefix=settings.API_V1_STR)
 # Mount static files
 app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 
-@app.get("/")
+# Mount static files for template resources
+app.mount("/static", StaticFiles(directory=os.path.join(os.path.dirname(__file__), "template")), name="static")
+
+@app.get("/", response_class=HTMLResponse)
 def root():
-    return {"message": "Welcome to MyVoiceChat API"}
+    html_path = os.path.join(os.path.dirname(__file__), "template", "login.html")
+    with open(html_path, "r", encoding="utf-8") as f:
+        html_content = f.read()
+    return HTMLResponse(content=html_content)
