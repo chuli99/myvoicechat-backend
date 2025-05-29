@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Conversación</title>
     <link rel="stylesheet" href="/static/login.css">
+    <!-- WebSocket version - No polling -->
     <style>
         body {
             background: linear-gradient(120deg, #89f7fe 0%, #66a6ff 100%);
@@ -197,9 +198,218 @@
     let currentUserId = null;
     let participantsMap = {};
     let participants = [];
+    let ws = null;
+    let reconnectAttempts = 0;
+    const maxReconnectAttempts = 5;
+    let typingTimer = null;
+    let isTyping = false;
 
     function goBack() {
+        closeWebSocket();
         window.location.href = '/static/home.html';
+    }
+
+    // WebSocket functions
+    function initWebSocket() {
+        if (!token || !conversationId || ws) return;
+        
+        const wsUrl = `ws://localhost:8080/api/v1/ws/${conversationId}?token=${encodeURIComponent(token)}`;
+        console.log('Connecting to:', wsUrl);
+        
+        try {
+            ws = new WebSocket(wsUrl);
+            
+            ws.onopen = function() {
+                console.log('WebSocket conectado');
+                reconnectAttempts = 0;
+                
+                // Enviar ping cada 30 segundos para mantener viva la conexión
+                const pingInterval = setInterval(() => {
+                    if (ws && ws.readyState === WebSocket.OPEN) {
+                        ws.send('ping');
+                    } else {
+                        clearInterval(pingInterval);
+                    }
+                }, 30000);
+                
+                // Guardar el intervalo para poder limpiarlo después
+                ws.pingInterval = pingInterval;
+            };
+            
+            ws.onmessage = function(event) {
+                if (event.data === 'pong') return; // Ignorar pongs
+                
+                try {
+                    const message = JSON.parse(event.data);
+                    console.log('WebSocket message received:', message);
+                    
+                    switch(message.type) {
+                        case 'new_message':
+                            appendNewMessage(message.data);
+                            break;
+                        case 'user_joined':
+                            console.log(`Usuario ${message.user_id} se unió a la conversación`);
+                            break;
+                        case 'user_left':
+                            console.log(`Usuario ${message.user_id} dejó la conversación`);
+                            break;
+                        case 'typing':
+                            handleTypingIndicator(message);
+                            break;
+                    }
+                } catch (e) {
+                    console.error('Error procesando mensaje WebSocket:', e);
+                }
+            };
+            
+            ws.onclose = function(event) {
+                console.log('WebSocket cerrado:', event.code, event.reason);
+                
+                // Limpiar interval de ping
+                if (ws && ws.pingInterval) {
+                    clearInterval(ws.pingInterval);
+                }
+                
+                ws = null;
+                
+                // Reintentar conexión si no fue cerrado intencionalmente
+                if (reconnectAttempts < maxReconnectAttempts && 
+                    event.code !== 1000 && 
+                    event.code !== 4001 && 
+                    event.code !== 4003) {
+                    
+                    reconnectAttempts++;
+                    console.log(`Reintentando conexión (${reconnectAttempts}/${maxReconnectAttempts})...`);
+                    setTimeout(initWebSocket, 2000 * reconnectAttempts);
+                } else if (event.code === 4001) {
+                    console.error('Token inválido - redirigiendo al login');
+                    goBack();
+                } else if (event.code === 4003) {
+                    console.error('Sin acceso a la conversación');
+                    alert('No tienes acceso a esta conversación');
+                    goBack();
+                }
+            };
+            
+            ws.onerror = function(error) {
+                console.error('Error WebSocket:', error);
+            };
+            
+        } catch (error) {
+            console.error('Error creating WebSocket:', error);
+            // Intentar reconectar después de un error
+            if (reconnectAttempts < maxReconnectAttempts) {
+                reconnectAttempts++;
+                setTimeout(initWebSocket, 2000 * reconnectAttempts);
+            }
+        }
+    }
+
+    function closeWebSocket() {
+        if (ws) {
+            // Limpiar interval de ping
+            if (ws.pingInterval) {
+                clearInterval(ws.pingInterval);
+            }
+            
+            // Cerrar conexión limpiamente
+            try {
+                ws.close(1000, 'Cerrando aplicación');
+            } catch (e) {
+                console.error('Error closing WebSocket:', e);
+            }
+            ws = null;
+        }
+    }
+
+    function sendTypingIndicator(typing) {
+        if (ws && ws.readyState === WebSocket.OPEN && isTyping !== typing) {
+            isTyping = typing;
+            ws.send(JSON.stringify({
+                type: 'typing',
+                is_typing: typing
+            }));
+        }
+    }
+
+    function handleTypingIndicator(message) {
+        const typingIndicator = document.getElementById('typingIndicator');
+        if (!typingIndicator) {
+            // Crear indicador de escritura si no existe
+            const indicator = document.createElement('div');
+            indicator.id = 'typingIndicator';
+            indicator.style.cssText = 'color:#888;font-style:italic;padding:0.5rem;display:none;';
+            document.getElementById('messages').appendChild(indicator);
+        }
+        
+        const indicator = document.getElementById('typingIndicator');
+        const username = participantsMap[message.user_id] || 'Usuario';
+        
+        if (message.is_typing) {
+            indicator.textContent = `${username} está escribiendo...`;
+            indicator.style.display = 'block';
+        } else {
+            indicator.style.display = 'none';
+        }
+    }
+
+    function appendNewMessage(messageData) {
+        const container = document.getElementById('messages');
+        
+        // Verificar si el mensaje ya existe para evitar duplicados
+        const existingMessage = container.querySelector(`[data-message-id="${messageData.id}"]`);
+        if (existingMessage) {
+            console.log('Mensaje duplicado ignorado:', messageData.id);
+            return;
+        }
+        
+        const wasAtBottom = container.scrollHeight - container.scrollTop <= container.clientHeight + 50;
+        
+        // Remover indicador de escritura si existe
+        const typingIndicator = document.getElementById('typingIndicator');
+        if (typingIndicator) {
+            typingIndicator.style.display = 'none';
+        }
+        
+        const div = document.createElement('div');
+        div.className = 'message';
+        div.dataset.messageId = messageData.id; // Para evitar duplicados
+        
+        const isMine = messageData.sender_id && currentUserId && messageData.sender_id === currentUserId;
+        if (isMine) {
+            div.classList.add('me');
+        }
+        
+        const user = participantsMap[messageData.sender_id] || 'Usuario';
+        
+        let messageHtml = `<span class="message-user">${user}</span>`;
+        messageHtml += `<span class="message-content">${messageData.content || '[Sin texto]'}`;
+        
+        if (!isMine) {
+            const content = messageData.content || '';
+            const nonAsciiCount = (content.match(/[^\x00-\x7F]/g) || []).length;
+            const asciiCount = content.length - nonAsciiCount;
+            const spanishChars = (content.match(/[áéíóúüñ¿¡]/gi) || []).length;
+            
+            let detectedLang = 'en';
+            if (spanishChars > 0 || nonAsciiCount > asciiCount/3) {
+                detectedLang = 'es';
+            }
+            
+            messageHtml += `<button class="translate-btn" style="background:none;border:none;color:#888;font-size:1.1em;cursor:pointer;padding:0 0.3em;vertical-align:middle;opacity:0.7;" title="Traducir" onclick="toggleTranslate(this, '${encodeURIComponent(messageData.content || '')}', '${detectedLang}', ${messageData.sender_id})">🌐</button>`;
+        }
+        
+        messageHtml += `</span>
+            <span class="message-time">${messageData.created_at ? new Date(messageData.created_at).toLocaleString() : new Date().toLocaleString()}</span>
+        `;
+        
+        div.innerHTML = messageHtml;
+        container.appendChild(div);
+        
+        // Solo hacer scroll si el usuario estaba al final
+        if (wasAtBottom) {
+            container.scrollTop = container.scrollHeight;
+        }
     }
 
     async function fetchParticipants() {
@@ -253,6 +463,7 @@
         messages.forEach(msg => {
             const div = document.createElement('div');
             div.className = 'message';
+            div.dataset.messageId = msg.id; // Para evitar duplicados
             
             // Determinar si el mensaje es propio
             const isMine = msg.sender_id && currentUserId && msg.sender_id === currentUserId;
@@ -419,10 +630,16 @@
         const input = document.getElementById('messageInput');
         const content = input.value.trim();
         if (!content) return;
+        
+        // Detener indicador de escritura
+        clearTimeout(typingTimer);
+        sendTypingIndicator(false);
+        
         const formData = new FormData();
         formData.append('conversation_id', conversationId);
         formData.append('content_type', 'text');
         formData.append('content', content);
+        
         try {
             const res = await fetch('http://localhost:8080/api/v1/messages/', {
                 method: 'POST',
@@ -434,7 +651,7 @@
             });
             if (res.ok) {
                 input.value = '';
-                fetchMessages();
+                // El mensaje aparecerá automáticamente via WebSocket
             } else if (res.status === 401) {
                 goBack();
             } else {
@@ -446,14 +663,29 @@
         }
     });
 
+    // Indicador de escritura
+    document.getElementById('messageInput').addEventListener('input', function() {
+        sendTypingIndicator(true);
+        
+        // Detener indicador después de 3 segundos sin escribir
+        clearTimeout(typingTimer);
+        typingTimer = setTimeout(() => {
+            sendTypingIndicator(false);
+        }, 3000);
+    });
+
+    // Limpiar al cerrar la página
+    window.addEventListener('beforeunload', closeWebSocket);
+
     // Inicialización
     (async function() {
         if (!token) goBack();
         currentUserId = await getCurrentUserId();
         await fetchParticipants();
         await fetchMessages();
-        // Refrescar mensajes cada 5 segundos
-        setInterval(fetchMessages, 5000);
+        
+        // Inicializar WebSocket en lugar de polling
+        initWebSocket();
     })();
     </script>
 </body>

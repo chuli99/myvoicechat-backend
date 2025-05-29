@@ -9,6 +9,7 @@ from app.schemas import (
     Message, MessageWithSender
 )
 from app.services.messages_service import MessagesService
+from app.websockets.manager import manager
 from fastapi import Form
 router = APIRouter()
 
@@ -28,6 +29,21 @@ async def create_new_message(
 ):
     """Create a new message in a conversation"""
     message = await MessagesService.create_new_message(db, conversation_id, content_type, content, audio_file, current_user.id)
+    
+    # Notify all connected clients in the conversation via WebSocket
+    await manager.send_to_conversation({
+        "type": "new_message",
+        "data": {
+            "id": message.id,
+            "conversation_id": message.conversation_id,
+            "sender_id": message.sender_id,
+            "content_type": message.content_type,
+            "content": message.content,
+            "media_url": message.media_url,
+            "created_at": message.created_at.isoformat() if message.created_at else None
+        }
+    }, str(conversation_id))
+    
     return message
 
 

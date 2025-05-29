@@ -50,3 +50,12 @@ class ParticipantsService:
         if current_user_id != participant.user_id and current_participant.id != min(p.id for p in all_participants):
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You don't have permission to remove this participant")
         delete_participant(db, participant_id)
+
+    @staticmethod
+    def user_has_access_to_conversation(db: Session, user_id: int, conversation_id: int) -> bool:
+        """Check if user has access to a conversation"""
+        try:
+            participant = get_participant_by_user_and_conversation(db, user_id, conversation_id)
+            return participant is not None
+        except Exception:
+            return False

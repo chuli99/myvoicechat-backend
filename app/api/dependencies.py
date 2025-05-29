@@ -58,3 +58,8 @@ def authenticate_user(db: Session, username: str, password: str) -> Optional[Use
     if not verify_password(password, user.hashed_password):
         return None
     return user
+
+
+def get_db_dependency():
+    """Get database session without FastAPI dependency injection"""
+    return get_db()
