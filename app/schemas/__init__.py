@@ -2,6 +2,7 @@ from app.schemas.user import User, UserCreate, UserUpdate, UserInDB
 from app.schemas.conversation import Conversation, ConversationCreate, ConversationUpdate, ConversationInDBBase
 from app.schemas.participant import Participant, ParticipantCreate
 from app.schemas.message import Message, MessageCreate, MessageUpdate
+from app.schemas.translated_message import TranslatedMessage, TranslatedMessageCreate, TranslateRequest, TranslateResponse
 
 from pydantic import BaseModel
 from typing import List

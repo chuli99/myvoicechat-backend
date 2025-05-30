@@ -33,7 +33,7 @@ target_metadata = Base.metadata
 # ... etc.
 
 # Direct database URL assignment
-DATABASE_URL = settings.SQLALCHEMY_DATABASE_URL
+DATABASE_URL = settings.DATABASE_URL
 config.set_main_option("sqlalchemy.url", DATABASE_URL)
 
 

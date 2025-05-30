@@ -10,6 +10,10 @@ from app.crud import (
 )
 from app.models.message import ContentType
 from app.schemas import MessageCreate
+from app.services.translation_service import TranslationService
+import logging
+
+logger = logging.getLogger(__name__)
 
 UPLOAD_DIR = os.path.join(os.getcwd(), "uploads", "audio")
 os.makedirs(UPLOAD_DIR, exist_ok=True)
@@ -39,6 +43,17 @@ class MessagesService:
             media_url = f"uploads/audio/{filename}"
             message_data.media_url = media_url
         message = create_message(db, message_data, current_user_id)
+        
+        # Create translated message automatically for text messages
+        if content_type == ContentType.TEXT and content:
+            try:
+                translated_message_id = await TranslationService.create_translated_message(db, message)
+                if translated_message_id:
+                    logger.info(f"Successfully created translated message {translated_message_id} for message {message.id}")
+            except Exception as e:
+                logger.error(f"Failed to create translated message for message {message.id}: {e}")
+                # Don't fail the original message creation if translation fails
+        
         return message
 
     @staticmethod

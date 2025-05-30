@@ -24,3 +24,4 @@ class Message(Base):
     # Relationships
     conversation = relationship("Conversation", back_populates="messages")
     sender = relationship("User", back_populates="sent_messages")
+    translated_message = relationship("TranslatedMessage", back_populates="original_message", uselist=False)
