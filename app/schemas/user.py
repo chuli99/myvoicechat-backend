@@ -8,6 +8,15 @@ class LoginRequest(BaseModel):
     password: str
 
 
+class UserBasic(BaseModel):
+    """Schema for basic user information used in search results"""
+    id: int
+    username: str
+    
+    class Config:
+        orm_mode = True
+
+
 class UserBase(BaseModel):
     username: str
     email: EmailStr

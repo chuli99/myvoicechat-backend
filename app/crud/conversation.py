@@ -1,4 +1,5 @@
 from sqlalchemy.orm import Session
+from sqlalchemy import desc
 from typing import List, Optional
 from fastapi.encoders import jsonable_encoder
 from app.models.conversation import Conversation
@@ -51,5 +52,16 @@ def get_conversations_by_user_id(db: Session, user_id: int) -> List[Conversation
         db.query(Conversation)
         .join(Conversation.participants)
         .filter_by(user_id=user_id)
+        .all()
+    )
+
+
+def get_all_conversations(db: Session, skip: int = 0, limit: int = 100) -> List[Conversation]:
+    """Obtener todas las conversaciones ordenadas por fecha de actualización"""
+    return (
+        db.query(Conversation)
+        .order_by(desc(Conversation.updated_at))
+        .offset(skip)
+        .limit(limit)
         .all()
     )

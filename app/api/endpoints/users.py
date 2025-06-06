@@ -10,7 +10,7 @@ from app.core.security import create_access_token
 from app.crud import user as user_crud
 from app.db.database import get_db
 from app.models.user import User
-from app.schemas.user import User as UserSchema, UserCreate, UserUpdate, LoginRequest
+from app.schemas.user import User as UserSchema, UserCreate, UserUpdate, LoginRequest, UserBasic
 from app.services.user_service import UserService
 
 
@@ -79,6 +79,24 @@ def read_users(
     """
     users = user_crud.get_users(db, skip=skip, limit=limit)
     return users
+
+
+@router.get("/search/{username}", response_model=UserBasic)
+def search_user_by_username(
+    username: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> Any:
+    """
+    Search for a user by username and return basic information (id and username).
+    """
+    user = user_crud.get_user_by_username(db, username=username)
+    if user is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"User with username '{username}' not found",
+        )
+    return UserBasic(id=user.id, username=user.username)
 
 
 @router.get("/users/{user_id}", response_model=UserSchema)
