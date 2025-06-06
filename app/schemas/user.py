@@ -24,12 +24,14 @@ class UserUpdate(BaseModel):
     password: Optional[str] = None
     primary_language: Optional[str] = None
     is_active: Optional[bool] = None
+    ref_audio_url: Optional[str] = None
 
 
 class UserInDBBase(UserBase):
     id: int
     created_at: datetime
     is_active: bool
+    ref_audio_url: Optional[str] = None
 
     class Config:
         orm_mode = True

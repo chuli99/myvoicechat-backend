@@ -46,6 +46,13 @@ def root():
         html_content = f.read()
     return HTMLResponse(content=html_content)
 
+@app.get("/test-audio", response_class=HTMLResponse)
+def test_audio():
+    html_path = os.path.join(os.path.dirname(__file__), "template", "test_audio_upload.html")
+    with open(html_path, "r", encoding="utf-8") as f:
+        html_content = f.read()
+    return HTMLResponse(content=html_content)
+
 @app.get("/conversation-ws", response_class=HTMLResponse)
 def conversation_ws():
     html_path = os.path.join(os.path.dirname(__file__), "template", "conversation_ws.html")

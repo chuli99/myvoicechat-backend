@@ -9,6 +9,7 @@ class User(Base):
     email = Column(String, unique=True, index=True)
     hashed_password = Column(String)
     primary_language = Column(String)
+    ref_audio_url = Column(String, nullable=True)  # Nueva columna para audio de referencia
     created_at = Column(DateTime, server_default=func.now())
     is_active = Column(Boolean, default=True)
     

@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Audio Upload</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; }
+        .container { max-width: 600px; }
+        .form-group { margin: 20px 0; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; }
+        input, button { padding: 10px; margin: 5px 0; }
+        button { background-color: #007bff; color: white; border: none; cursor: pointer; }
+        button:hover { background-color: #0056b3; }
+        .result { margin: 20px 0; padding: 15px; border-radius: 5px; }
+        .success { background-color: #d4edda; border: 1px solid #c3e6cb; color: #155724; }
+        .error { background-color: #f8d7da; border: 1px solid #f5c6cb; color: #721c24; }
+        .info { background-color: #d1ecf1; border: 1px solid #bee5eb; color: #0c5460; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎵 Test Audio Upload</h1>
+        
+        <div class="form-group">
+            <h3>1. Registrar Usuario</h3>
+            <label>Username:</label>
+            <input type="text" id="username" value="testuser_frontend">
+            <label>Email:</label>
+            <input type="email" id="email" value="test@frontend.com">
+            <label>Password:</label>
+            <input type="password" id="password" value="password123">
+            <button onclick="registerUser()">Registrar</button>
+        </div>
+
+        <div class="form-group">
+            <h3>2. Login</h3>
+            <button onclick="loginUser()">Hacer Login</button>
+        </div>
+
+        <div class="form-group">
+            <h3>3. Subir Audio</h3>
+            <label>Seleccionar archivo de audio:</label>
+            <input type="file" id="audioFile" accept="audio/*">
+            <button onclick="uploadAudio()">Subir Audio</button>
+        </div>
+
+        <div id="results"></div>
+    </div>
+
+    <script>
+        let accessToken = null;
+        const API_BASE = 'http://localhost:8080/api/v1';
+
+        function showResult(message, type = 'info') {
+            const results = document.getElementById('results');
+            const div = document.createElement('div');
+            div.className = `result ${type}`;
+            div.innerHTML = `<strong>${new Date().toLocaleTimeString()}:</strong> ${message}`;
+            results.appendChild(div);
+            results.scrollTop = results.scrollHeight;
+        }
+
+        async function registerUser() {
+            try {
+                const userData = {
+                    username: document.getElementById('username').value,
+                    email: document.getElementById('email').value,
+                    password: document.getElementById('password').value,
+                    primary_language: 'es'
+                };
+
+                showResult('Registrando usuario...', 'info');
+                
+                const response = await fetch(`${API_BASE}/users/register`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(userData)
+                });
+
+                const data = await response.json();
+                
+                if (response.ok) {
+                    showResult('✅ Usuario registrado exitosamente', 'success');
+                } else {
+                    showResult(`❌ Error al registrar: ${JSON.stringify(data)}`, 'error');
+                }
+            } catch (error) {
+                showResult(`❌ Error de red: ${error.message}`, 'error');
+            }
+        }
+
+        async function loginUser() {
+            try {
+                const loginData = {
+                    username: document.getElementById('username').value,
+                    password: document.getElementById('password').value
+                };
+
+                showResult('Haciendo login...', 'info');
+
+                const response = await fetch(`${API_BASE}/users/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(loginData)
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    accessToken = data.access_token;
+                    showResult('✅ Login exitoso, token obtenido', 'success');
+                } else {
+                    showResult(`❌ Error en login: ${JSON.stringify(data)}`, 'error');
+                }
+            } catch (error) {
+                showResult(`❌ Error de red: ${error.message}`, 'error');
+            }
+        }
+
+        async function uploadAudio() {
+            try {
+                if (!accessToken) {
+                    showResult('❌ Primero debes hacer login', 'error');
+                    return;
+                }
+
+                const fileInput = document.getElementById('audioFile');
+                const file = fileInput.files[0];
+
+                if (!file) {
+                    showResult('❌ Selecciona un archivo de audio', 'error');
+                    return;
+                }
+
+                showResult(`📤 Subiendo archivo: ${file.name} (${file.type}, ${file.size} bytes)`, 'info');
+
+                const formData = new FormData();
+                formData.append('audio_file', file);
+
+                // Mostrar detalles de la petición
+                showResult(`🔍 Token: ${accessToken.substring(0, 20)}...`, 'info');
+                showResult(`🔍 Content-Type del archivo: ${file.type}`, 'info');
+
+                const response = await fetch(`${API_BASE}/audio/upload-reference-audio`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${accessToken}`
+                        // NO incluir Content-Type aquí para multipart/form-data
+                    },
+                    body: formData
+                });
+
+                showResult(`🔍 Status de respuesta: ${response.status}`, 'info');
+
+                const responseText = await response.text();
+                showResult(`🔍 Respuesta raw: ${responseText}`, 'info');
+
+                if (response.ok) {
+                    const data = JSON.parse(responseText);
+                    showResult(`✅ Audio subido exitosamente: ${data.audio_url}`, 'success');
+                } else {
+                    showResult(`❌ Error ${response.status}: ${responseText}`, 'error');
+                    
+                    // Intentar parsear el error como JSON
+                    try {
+                        const errorData = JSON.parse(responseText);
+                        showResult(`🔍 Error detallado: ${JSON.stringify(errorData, null, 2)}`, 'error');
+                    } catch (e) {
+                        showResult('🔍 No se pudo parsear la respuesta de error como JSON', 'info');
+                    }
+                }
+
+            } catch (error) {
+                showResult(`❌ Error de red: ${error.message}`, 'error');
+            }
+        }
+
+        // Crear un archivo de audio falso para pruebas si no hay archivo real
+        function createFakeAudioFile() {
+            const fakeAudioData = new Uint8Array([
+                0x52, 0x49, 0x46, 0x46, // "RIFF"
+                0x24, 0x00, 0x00, 0x00, // chunk size
+                0x57, 0x41, 0x56, 0x45, // "WAVE"
+                0x66, 0x6d, 0x74, 0x20, // "fmt "
+                0x10, 0x00, 0x00, 0x00, // fmt chunk size
+                0x01, 0x00, 0x01, 0x00, // PCM, mono
+                0x44, 0xac, 0x00, 0x00, // 44100 Hz
+                0x88, 0x58, 0x01, 0x00, // byte rate
+                0x02, 0x00, 0x10, 0x00, // block align, bits per sample
+                0x64, 0x61, 0x74, 0x61, // "data"
+                0x00, 0x00, 0x00, 0x00  // data size
+            ]);
+            
+            const blob = new Blob([fakeAudioData], { type: 'audio/wav' });
+            return new File([blob], 'test.wav', { type: 'audio/wav' });
+        }
+
+        // Función para usar archivo falso
+        function useFakeAudio() {
+            const fakeFile = createFakeAudioFile();
+            const fileInput = document.getElementById('audioFile');
+            
+            // Crear un DataTransfer para simular la selección de archivo
+            const dataTransfer = new DataTransfer();
+            dataTransfer.items.add(fakeFile);
+            fileInput.files = dataTransfer.files;
+            
+            showResult('📁 Archivo de audio falso creado para pruebas', 'info');
+        }
+    </script>
+
+    <div style="margin-top: 30px; padding: 15px; background-color: #f8f9fa; border-radius: 5px;">
+        <h4>Instrucciones:</h4>
+        <ol>
+            <li>Haz clic en "Registrar" para crear un usuario de prueba</li>
+            <li>Haz clic en "Hacer Login" para obtener el token</li>
+            <li>Selecciona un archivo de audio o <button onclick="useFakeAudio()" style="padding: 5px;">usa archivo falso</button></li>
+            <li>Haz clic en "Subir Audio" para probar el endpoint</li>
+        </ol>
+        <p><strong>Si obtienes error 422:</strong> revisa los detalles en la sección de resultados para diagnosticar el problema específico.</p>
+    </div>
+</body>
+</html>

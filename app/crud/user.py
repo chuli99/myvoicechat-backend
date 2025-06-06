@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 from app.core.security import get_password_hash, verify_password
 from app.models.user import User
 from app.schemas.user import UserCreate, UserUpdate
+from app.services.file_storage import FileStorageService
 
 
 def get_user(db: Session, user_id: int) -> Optional[User]:
@@ -55,9 +56,35 @@ def update_user(
     return db_user
 
 
+def update_user_audio(
+    db: Session, 
+    user_id: int, 
+    audio_url: str
+) -> Optional[User]:
+    """Actualiza la referencia de audio del usuario"""
+    user = db.query(User).filter(User.id == user_id).first()
+    if user:
+        # Si ya tenía un audio, eliminar el anterior
+        if user.ref_audio_url:
+            file_service = FileStorageService()
+            old_file_path = file_service.get_full_path_from_url(user.ref_audio_url)
+            file_service.delete_audio_file(old_file_path)
+        
+        user.ref_audio_url = audio_url
+        db.commit()
+        db.refresh(user)
+    return user
+
+
 def delete_user(db: Session, user_id: int) -> Optional[User]:
     user = db.query(User).filter(User.id == user_id).first()
     if user:
+        # Eliminar archivo de audio si existe
+        if user.ref_audio_url:
+            file_service = FileStorageService()
+            file_path = file_service.get_full_path_from_url(user.ref_audio_url)
+            file_service.delete_audio_file(file_path)
+        
         db.delete(user)
         db.commit()
     return user
