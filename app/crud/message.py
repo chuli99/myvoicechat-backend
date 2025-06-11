@@ -1,8 +1,9 @@
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from fastapi.encoders import jsonable_encoder
-from app.models.message import Message
+from app.models.message import Message, ContentType
 from app.schemas.message import MessageCreate, MessageUpdate
+from app.services.file_storage import FileStorageService
 
 
 def get_message(db: Session, message_id: int) -> Optional[Message]:
@@ -87,4 +88,59 @@ def count_unread_messages(db: Session, conversation_id: int, user_id: int) -> in
             Message.is_read == False
         )
         .count()
+    )
+
+
+def create_audio_message(
+    db: Session, 
+    conversation_id: int, 
+    sender_id: int, 
+    media_url: str,
+    content: Optional[str] = None
+) -> Message:
+    """Create a new audio message"""
+    db_message = Message(
+        conversation_id=conversation_id,
+        sender_id=sender_id,
+        content_type=ContentType.AUDIO,
+        content=content or "",  # Puede estar vacío para mensajes de solo audio
+        media_url=media_url,
+        is_read=False
+    )
+    db.add(db_message)
+    db.commit()
+    db.refresh(db_message)
+    return db_message
+
+
+def delete_audio_message(db: Session, message_id: int) -> bool:
+    """Delete an audio message and its associated file"""
+    message = get_message(db, message_id)
+    if message and message.content_type == ContentType.AUDIO and message.media_url:
+        # Eliminar el archivo físico
+        file_storage = FileStorageService()
+        file_path = file_storage.get_full_path_from_url(message.media_url)
+        file_storage.delete_audio_file(file_path)
+        
+        # Eliminar el mensaje de la base de datos
+        db.delete(message)
+        db.commit()
+        return True
+    return False
+
+
+def get_audio_messages_by_conversation(
+    db: Session, conversation_id: int, skip: int = 0, limit: int = 100
+) -> List[Message]:
+    """Get all audio messages from a conversation"""
+    return (
+        db.query(Message)
+        .filter(
+            Message.conversation_id == conversation_id,
+            Message.content_type == ContentType.AUDIO
+        )
+        .order_by(Message.created_at.desc())
+        .offset(skip)
+        .limit(limit)
+        .all()
     )
