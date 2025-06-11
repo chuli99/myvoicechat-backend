@@ -17,7 +17,7 @@ class FileStorageService:
     
     async def save_audio_file(self, file: UploadFile, user_id: int) -> str:
         """
-        Guarda el archivo de audio de referencia del usuario y retorna la ruta completa del archivo
+        Guarda el archivo de audio de referencia del usuario y retorna la URL para ref_audio_url
         """
         # Validar tipo de archivo
         if not file.content_type or not file.content_type.startswith('audio/'):
@@ -38,7 +38,8 @@ class FileStorageService:
         async with aiofiles.open(file_path, 'wb') as f:
             await f.write(file_content)
         
-        return file_path
+        # Retornar la URL que se guardará en ref_audio_url
+        return f"/api/v1/audio/user/{unique_filename}"
     
     async def save_message_audio_file(self, file: UploadFile, user_id: int, conversation_id: int) -> str:
         """
@@ -86,12 +87,12 @@ class FileStorageService:
         
         # Determinar si es un archivo de usuario o mensaje basado en la ruta
         if "/users/" in file_path:
-            return f"/api/v1/audio/audio/{filename}"
+            return f"/api/v1/audio/user/{filename}"
         elif "/messages/" in file_path:
             return f"/api/v1/audio/message/{filename}"
         else:
             # Fallback para compatibilidad con archivos existentes
-            return f"/api/v1/audio/audio/{filename}"
+            return f"/api/v1/audio/user/{filename}"
     
     def get_message_file_url(self, file_path: str) -> str:
         """Convierte la ruta del archivo de mensaje a URL específica para mensajes"""
@@ -109,6 +110,9 @@ class FileStorageService:
                 if filename in files:
                     return os.path.join(root, filename)
             return os.path.join(self.message_audio_path, filename)
-        else:
+        elif "/user/" in audio_url:
             # Para usuarios, buscar en el directorio de usuarios
+            return os.path.join(self.user_audio_path, filename)
+        else:
+            # Fallback para compatibilidad - asumir que es de usuario
             return os.path.join(self.user_audio_path, filename)

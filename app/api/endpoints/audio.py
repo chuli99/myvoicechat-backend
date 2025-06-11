@@ -22,11 +22,8 @@ async def upload_reference_audio(
     try:
         file_service = FileStorageService()
         
-        # Guardar el archivo
-        file_path = await file_service.save_audio_file(audio_file, current_user.id)
-        
-        # Generar URL para el archivo
-        audio_url = file_service.get_file_url(file_path)
+        # Guardar el archivo y obtener la URL directamente
+        audio_url = await file_service.save_audio_file(audio_file, current_user.id)
         
         # Actualizar usuario en la base de datos
         updated_user = crud_user.update_user_audio(
@@ -60,6 +57,26 @@ async def get_audio_file(filename: str):
     return FileResponse(
         file_path,
         media_type="audio/mpeg",
+        filename=filename
+    )
+
+
+@router.get("/user/{filename}")
+async def get_user_audio_file(filename: str):
+    """Servir archivos de audio de referencia de usuarios"""
+    file_service = FileStorageService()
+    file_path = os.path.join(file_service.user_audio_path, filename)
+    
+    if not os.path.exists(file_path):
+        raise HTTPException(status_code=404, detail="Archivo de audio no encontrado")
+    
+    return FileResponse(
+        file_path,
+        media_type="audio/mpeg",
+        headers={
+            "Accept-Ranges": "bytes",
+            "Cache-Control": "public, max-age=3600"
+        },
         filename=filename
     )
 
