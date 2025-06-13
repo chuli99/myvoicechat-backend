@@ -33,8 +33,8 @@ app.add_middleware(
 # Include routers
 app.include_router(api_router, prefix=settings.API_V1_STR)
 
-# Mount static files
-app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
+# Mount static files for audio uploads - this serves files at /api/uploads/...
+app.mount("/api/uploads", StaticFiles(directory="uploads"), name="api_uploads")
 
 # Mount static files for template resources
 app.mount("/static", StaticFiles(directory=os.path.join(os.path.dirname(__file__), "template")), name="static")

@@ -44,7 +44,7 @@ class MessagesService:
             message_data.media_url = media_url
         message = create_message(db, message_data, current_user_id)
         
-        # Create translated message automatically for text messages
+        # Create translated message automatically for both text and audio messages
         if content_type == ContentType.TEXT and content:
             try:
                 translated_message_id = await TranslationService.create_translated_message(db, message)
@@ -52,6 +52,14 @@ class MessagesService:
                     logger.info(f"Successfully created translated message {translated_message_id} for message {message.id}")
             except Exception as e:
                 logger.error(f"Failed to create translated message for message {message.id}: {e}")
+                # Don't fail the original message creation if translation fails
+        elif content_type == ContentType.AUDIO:
+            try:
+                translated_message_id = await TranslationService.create_translated_message(db, message)
+                if translated_message_id:
+                    logger.info(f"Successfully created translated audio message {translated_message_id} for message {message.id}")
+            except Exception as e:
+                logger.error(f"Failed to create translated audio message for message {message.id}: {e}")
                 # Don't fail the original message creation if translation fails
         
         return message

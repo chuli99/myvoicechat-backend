@@ -5,8 +5,9 @@ from typing import Optional
 
 class TranslatedMessageBase(BaseModel):
     target_language: str
-    translated_content: str
+    translated_content: Optional[str] = None  # Nullable for audio messages
     media_url: Optional[str] = None
+    content_type: str = "TEXT"  # "TEXT" or "AUDIO"
 
 
 class TranslatedMessageCreate(TranslatedMessageBase):

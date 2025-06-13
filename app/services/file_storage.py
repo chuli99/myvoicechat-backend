@@ -121,7 +121,22 @@ class FileStorageService:
         filename = audio_url.split('/')[-1]
         
         # Determinar si es un archivo de usuario o mensaje basado en la URL
-        if "/message/conv_" in audio_url:
+        if "/uploads/audio/users/" in audio_url:
+            # URL de archivo de referencia de usuario (formato: /api/uploads/audio/users/{filename})
+            return os.path.join(self.user_audio_path, filename)
+        elif "/uploads/audio/messages/" in audio_url:
+            # URL de archivo de mensaje (formato: /api/uploads/audio/messages/conv_{conv_id}/{filename})
+            # Extraer el ID de conversación de la URL
+            parts = audio_url.split('/')
+            for i, part in enumerate(parts):
+                if part.startswith("conv_") and i < len(parts) - 1:
+                    conv_id = part.replace("conv_", "")
+                    conv_dir = os.path.join(self.message_audio_path, f"conv_{conv_id}")
+                    return os.path.join(conv_dir, filename)
+            
+            # Si no encontramos el ID de conversación, usar el comportamiento anterior
+            return os.path.join(self.message_audio_path, filename)
+        elif "/message/conv_" in audio_url:
             # Nuevo formato con ID de conversación
             # Extraer el ID de conversación de la URL (formato: /api/v1/audio/message/conv_{conv_id}/{filename})
             parts = audio_url.split('/')
