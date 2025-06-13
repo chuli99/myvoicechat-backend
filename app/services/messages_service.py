@@ -11,12 +11,10 @@ from app.crud import (
 from app.models.message import ContentType
 from app.schemas import MessageCreate
 from app.services.translation_service import TranslationService
+from app.services.file_storage import FileStorageService
 import logging
 
 logger = logging.getLogger(__name__)
-
-UPLOAD_DIR = os.path.join(os.getcwd(), "uploads", "audio")
-os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 class MessagesService:
     @staticmethod
@@ -35,12 +33,14 @@ class MessagesService:
         elif content_type == ContentType.AUDIO:
             if not audio_file:
                 raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Audio file is required for audio messages")
-            file_extension = os.path.splitext(audio_file.filename)[1]
-            filename = f"{uuid.uuid4()}{file_extension}"
-            file_path = os.path.join(UPLOAD_DIR, filename)
-            with open(file_path, "wb") as f:
-                f.write(await audio_file.read())
-            media_url = f"uploads/audio/{filename}"
+            
+            # Usar FileStorageService para guardar el archivo de audio
+            file_service = FileStorageService()
+            file_path = await file_service.save_message_audio_file(audio_file, current_user_id, conversation_id)
+            
+            # Generar URL para el archivo
+            media_url = file_service.get_message_file_url(file_path)
+            print(f"Audio file saved to {file_path} with URL {media_url}")
             message_data.media_url = media_url
         message = create_message(db, message_data, current_user_id)
         
@@ -78,8 +78,12 @@ class MessagesService:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You are not a participant in this conversation")
         if message.sender_id != current_user_id:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You can only delete your own messages")
+        
+        # Si es un mensaje de audio, eliminar el archivo usando FileStorageService
         if message.content_type == ContentType.AUDIO and message.media_url:
-            file_path = os.path.join(os.getcwd(), message.media_url)
-            if os.path.exists(file_path):
-                os.remove(file_path)
+            file_service = FileStorageService()
+            # Convertir la URL del audio a la ruta completa del archivo
+            file_path = file_service.get_full_path_from_url(message.media_url)
+            file_service.delete_audio_file(file_path)
+            
         delete_message(db, message_id)

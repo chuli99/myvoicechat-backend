@@ -39,12 +39,13 @@ class FileStorageService:
             await f.write(file_content)
         
         # Retornar la URL que se guardará en ref_audio_url
-        return f"/api/v1/audio/user/{unique_filename}"
+        return f"/api/uploads/audio/users/{unique_filename}"
     
     async def save_message_audio_file(self, file: UploadFile, user_id: int, conversation_id: int) -> str:
         """
-        Guarda el archivo de audio de un mensaje y retorna la ruta completa del archivo
+        Guarda el archivo de audio de un mensaje y retorna la ruta completa del archivo en el sistema
         """
+        print(f"Guardando archivo de audio para usuario {user_id} en conversación {conversation_id}")
         # Validar tipo de archivo
         if not file.content_type or not file.content_type.startswith('audio/'):
             raise HTTPException(status_code=400, detail="El archivo debe ser de audio")
@@ -61,13 +62,14 @@ class FileStorageService:
         
         # Generar nombre único para audio de mensaje
         file_extension = file.filename.split('.')[-1] if file.filename and '.' in file.filename else 'wav'
-        unique_filename = f"msg_{user_id}_{uuid.uuid4().hex}.{file_extension}"
+        unique_filename = f"usr_{user_id}_{uuid.uuid4().hex}.{file_extension}"
         file_path = os.path.join(conversation_dir, unique_filename)
         
         # Guardar archivo
         async with aiofiles.open(file_path, 'wb') as f:
             await f.write(file_content)
         
+        # Retornar la ruta completa del archivo en el sistema de archivos
         return file_path
     
     def delete_audio_file(self, file_path: str) -> bool:
@@ -96,16 +98,43 @@ class FileStorageService:
     
     def get_message_file_url(self, file_path: str) -> str:
         """Convierte la ruta del archivo de mensaje a URL específica para mensajes"""
+        # Extraemos el nombre del archivo y el ID de la conversación de la ruta
         filename = os.path.basename(file_path)
-        return f"/api/v1/audio/message/{filename}"
+        # Intentar obtener el ID de la conversación de la ruta
+        conv_id = None
+        parts = file_path.split(os.sep)
+        for i, part in enumerate(parts):
+            if part.startswith("conv_") and i < len(parts) - 1:
+                conv_id = part.replace("conv_", "")
+                break
+        
+        # Si tenemos el ID de conversación, incluirlo en la URL
+        if conv_id:
+            return f"/api/uploads/audio/messages/conv_{conv_id}/{filename}"
+        else:
+            # Fallback al formato anterior
+            return f"/api/v1/audio/message/{filename}"  
     
     def get_full_path_from_url(self, audio_url: str) -> str:
         """Convierte una URL de audio de vuelta a la ruta completa del archivo"""
+        # Extraer el nombre del archivo
         filename = audio_url.split('/')[-1]
         
         # Determinar si es un archivo de usuario o mensaje basado en la URL
-        if "/message/" in audio_url:
-            # Para mensajes, buscar en todos los subdirectorios de conversaciones
+        if "/message/conv_" in audio_url:
+            # Nuevo formato con ID de conversación
+            # Extraer el ID de conversación de la URL (formato: /api/v1/audio/message/conv_{conv_id}/{filename})
+            parts = audio_url.split('/')
+            for i, part in enumerate(parts):
+                if part.startswith("conv_") and i < len(parts) - 1:
+                    conv_id = part.replace("conv_", "")
+                    conv_dir = os.path.join(self.message_audio_path, f"conv_{conv_id}")
+                    return os.path.join(conv_dir, filename)
+            
+            # Si no encontramos el ID de conversación, usar el comportamiento anterior
+            return os.path.join(self.message_audio_path, filename)
+        elif "/message/" in audio_url:
+            # Para mensajes sin subdirectorio específico, buscar en todos los subdirectorios
             for root, dirs, files in os.walk(self.message_audio_path):
                 if filename in files:
                     return os.path.join(root, filename)
