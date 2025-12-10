@@ -237,3 +237,20 @@ async def delete_message_audio(
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error interno del servidor: {str(e)}")
+
+
+@router.get("/translated/{filename}")
+async def get_translated_audio_file(filename: str):
+    """Servir archivos de audio traducidos"""
+    # Los archivos traducidos se almacenan en uploads/audio/message_clon/
+    translated_audio_dir = "uploads/audio/message_clon"
+    file_path = os.path.join(translated_audio_dir, filename)
+    
+    if not os.path.exists(file_path):
+        raise HTTPException(status_code=404, detail="Archivo de audio traducido no encontrado")
+    
+    return FileResponse(
+        file_path,
+        media_type="audio/wav",
+        filename=filename
+    )
